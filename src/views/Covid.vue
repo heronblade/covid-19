@@ -1,9 +1,7 @@
 <template>
   <div class="covid">
     <p>Covid Page</p>
-    <choropleth
-      title="Plan Enrollment Share by County"
-      :state="state"></choropleth>
+    <choropleth></choropleth>
   </div>
 </template>
 
@@ -13,9 +11,7 @@ import choropleth from '../components/choropleth.vue';
 export default {
   name: 'covid',
   data() {
-    return {
-      state: 'Pennsylvania',
-    };
+    return {};
   },
   components: {
     choropleth,
