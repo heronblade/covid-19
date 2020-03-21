@@ -1,23 +1,25 @@
 @import '../variables';
 
-.choropleth-wrapper {
-    path {
-        fill: $color-choro-default;
-        stroke: $color-white;
-        stroke-width: .5px;
-    }
+.covid {
+    &__choropleth-wrapper {
+        path {
+            fill: $color-choro-default;
+            stroke: $color-white;
+            stroke-width: .5px;
+        }
 
-    .choropleth-tooltip {
-        position: absolute;
-        text-align: center;
-        width: auto;
-        height: auto;
-        padding: 2px;
-        font-size: 12px;
-        font-family: $font-family-open-sans;
-        background: $color-white;
-        border: 0;
-        pointer-events: none;
-        color: $color-black;
+        .choropleth-tooltip {
+            position: absolute;
+            text-align: center;
+            width: auto;
+            height: auto;
+            padding: 2px;
+            font-size: 12px;
+            font-family: $font-family-open-sans;
+            background: $color-white;
+            border: 0;
+            pointer-events: none;
+            color: $color-black;
+        }
     }
 }
