@@ -1,0 +1,10 @@
+/* We can safely over ride the chalk theme from here */
+/* theme color */
+@import 'variables';
+$--color-primary: teal;
+$--menu-item-fill: green;
+
+/* icon font path, required */
+$--font-path: '~element-ui/lib/theme-chalk/fonts';
+
+@import '~element-ui/packages/theme-chalk/src/index';

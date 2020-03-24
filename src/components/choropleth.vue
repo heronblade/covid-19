@@ -7,6 +7,9 @@
       <input @click="handleMapToggle" type="radio"
              id="allCounties" name="maps" value="Counties">
       <label for="allCounties">Counties</label>
+      <div class="date-slider">
+        <el-slider v-model="sliderState" :format-tooltip="formatTooltip"></el-slider>
+      </div>
     </div>
     <div class="covid__choropleth-wrapper">
       <svg id="usa" :class="`show-${this.showStates}`"></svg>
@@ -32,12 +35,28 @@ export default {
   data() {
     return {
       clicked: false,
+      endDate: '',
       showStates: true,
       showCounties: false,
+      sliderState: 1,
       countiesRendered: false,
     };
   },
   methods: {
+    formatTooltip(val) {
+      const startDate = new Date(2020, 0, 1);
+      startDate.setDate(val);
+      this.endDate = startDate;
+      const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+        'Thursday', 'Friday', 'Saturday'];
+      const monthToString = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December'];
+      const day = dayToString[startDate.getDay()];
+      const month = monthToString[startDate.getMonth()];
+      const dateOfMonth = startDate.getDate();
+      const year = startDate.getFullYear();
+      return `${day}, ${month} ${dateOfMonth} ${year} `;
+    },
     handleMapToggle() {
       this.showStates = !this.showStates;
       this.showCounties = !this.showCounties;
@@ -88,6 +107,10 @@ export default {
       const infectionColors = {};
       const color = d3.scaleSequential([0, 1000], d3.interpolateBlues);
 
+      /**
+       * have to figure out if we are showing totals or we are showing up to the current date
+       * for these color figures
+       */
       if (states) {
         statesData.forEach((state) => {
           infectionColors[state.name] = state.totals.infections;
