@@ -1,0 +1,703 @@
+[
+  {
+    "name": "Alabama",
+    "totals": {
+      "infections": 1000,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 10
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Alaska",
+    "totals": {
+      "infections": 300,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Arizona",
+    "totals": {
+      "infections": 150,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Arkansas",
+    "totals": {
+      "infections": 8,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "California",
+    "totals": {
+      "infections": 989,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Colorado",
+    "totals": {
+      "infections": 629,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Connecticut",
+    "totals": {
+      "infections": 739,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Delaware",
+    "totals": {
+      "infections": 43,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Florida",
+    "totals": {
+      "infections": 892,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Georgia",
+    "totals": {
+      "infections": 999,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Hawaii",
+    "totals": {
+      "infections": 2,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Idaho",
+    "totals": {
+      "infections": 783,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Illinois",
+    "totals": {
+      "infections": 623,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Indiana",
+    "totals": {
+      "infections": 123,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Iowa",
+    "totals": {
+      "infections": 398,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Kansas",
+    "totals": {
+      "infections": 400,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Kentucky",
+    "totals": {
+      "infections": 100,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Louisiana",
+    "totals": {
+      "infections": 200,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Maine",
+    "totals": {
+      "infections": 452,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Maryland",
+    "totals": {
+      "infections": 555,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Massachusetts",
+    "totals": {
+      "infections": 111,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Michigan",
+    "totals": {
+      "infections": 89,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Minnesota",
+    "totals": {
+      "infections": 63,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Mississippi",
+    "totals": {
+      "infections": 630,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Missouri",
+    "totals": {
+      "infections": 986,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Montana",
+    "totals": {
+      "infections": 292,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Nebraska",
+    "totals": {
+      "infections": 444,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Nevada",
+    "totals": {
+      "infections": 232,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "New Hampshire",
+    "totals": {
+      "infections": 10,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "New Jersey",
+    "totals": {
+      "infections": 279,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "New Mexico",
+    "totals": {
+      "infections": 872,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "New York",
+    "totals": {
+      "infections": 999,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "North Carolina",
+    "totals": {
+      "infections": 2,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "North Dakota",
+    "totals": {
+      "infections": 542,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Ohio",
+    "totals": {
+      "infections": 892,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Oklahoma",
+    "totals": {
+      "infections": 232,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Oregon",
+    "totals": {
+      "infections": 4,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Pennsylvania",
+    "totals": {
+      "infections": 928,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Rhode Island",
+    "totals": {
+      "infections": 421,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "South Carolina",
+    "totals": {
+      "infections": 44,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "South Dakota",
+    "totals": {
+      "infections": 398,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Tennessee",
+    "totals": {
+      "infections": 499,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Texas",
+    "totals": {
+      "infections": 12,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Utah",
+    "totals": {
+      "infections": 629,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+
+  {
+    "name": "Vermont",
+    "totals": {
+      "infections": 69,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Virginia",
+    "totals": {
+      "infections": 12,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Washington",
+    "totals": {
+      "infections": 862,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "West Virginia",
+    "totals": {
+      "infections": 712,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Wisconsin",
+    "totals": {
+      "infections": 423,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  },
+  {
+    "name": "Wyoming",
+    "totals": {
+      "infections": 10,
+      "deaths": 1
+    },
+    "infections": [
+      {
+        "date": "01/01/2020",
+        "number": 100
+      }
+    ],
+    "deaths": []
+  }
+]

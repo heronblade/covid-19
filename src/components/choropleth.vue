@@ -23,33 +23,15 @@ import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import usAlbersCounties from '../../public/us-albers-counties.json';
 import usAlbers from '../../public/us-albers.json';
+import statesData from '../../public/states.json';
+
+import countiesData from '../../public/counties.json';
 
 export default {
   name: 'choropleth',
-  props: {
-    clicked: {
-      type: Boolean,
-      default: false,
-    },
-    handleClick: {
-      type: Function,
-      default: () => {},
-    },
-    handleHover: {
-      type: Function,
-      default: () => {},
-    },
-    state: {
-      type: String,
-      default: '',
-    },
-    title: {
-      type: String,
-      default: '',
-    },
-  },
   data() {
     return {
+      clicked: false,
       showStates: true,
       showCounties: false,
       countiesRendered: false,
@@ -61,15 +43,26 @@ export default {
       this.showCounties = !this.showCounties;
       if (!this.countiesRendered) {
         this.countiesRendered = true;
-        this.renderCounties();
+        this.renderMap(false);
       }
     },
-    renderCounties() {
+    renderMap(states) {
       const width = 960;
       const height = 600;
-      const svg = d3.select('#counties')
-        .attr('width', width)
-        .attr('height', height);
+
+      const svg = states
+        ? d3.select('#usa')
+          .attr('width', width)
+          .attr('height', height)
+        : d3.select('#counties')
+          .attr('width', width)
+          .attr('height', height);
+
+      const tooltip = d3
+        .select('.covid__choropleth-wrapper')
+        .append('div')
+        .attr('class', 'covid__choropleth-tooltip')
+        .style('opacity', 0);
 
       // const projection = d3.geoMercator(); // corrected to line up on the screen
       const projection = d3.geoAlbersUsa(); // correct to the full map
@@ -91,8 +84,54 @@ export default {
 
       projection.scale(s).translate(t);
 
-      function ready(us) {
-        const usa = topojson.feature(us, us.objects.collection).features;
+      // colors matched with data
+      const infectionColors = {};
+      const color = d3.scaleSequential([0, 1000], d3.interpolateBlues);
+
+      if (states) {
+        statesData.forEach((state) => {
+          infectionColors[state.name] = state.totals.infections;
+        });
+      } else {
+        console.log(countiesData);
+        countiesData
+          .filter((county) => county.totals)
+          .forEach((county) => {
+            infectionColors[county.name] = county.totals.infections;
+          });
+      }
+
+      function handleMouseOver(d) {
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .style('opacity', 1);
+
+        tooltip
+          .transition()
+          .duration(100)
+          .style('opacity', 0.9);
+        tooltip
+          .html(d.properties.name)
+          .style('left', `${d3.event.pageX}px`)
+          .style('top', `${d3.event.pageY - 28}px`);
+      }
+
+      function handleMouseOut() {
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .style('opacity', 0.8);
+        tooltip
+          .transition()
+          .duration(100)
+          .style('opacity', 0);
+      }
+
+      function ready(topoData) {
+        const usa = states
+          ? topojson.feature(topoData, topoData.objects.us).features
+          : topojson.feature(topoData, topoData.objects.collection).features;
 
         svg
           .selectAll('g')
@@ -100,6 +139,10 @@ export default {
           .enter()
           .append('g')
           .append('path')
+          .on('mouseover', handleMouseOver)
+          .on('mouseout', handleMouseOut)
+          .style('opacity', 0.8)
+          .style('fill', (d) => color(infectionColors[d.properties.name]))
           .attr('d', path)
           .attr('fill-rule', 'evenodd')
           .attr('clip-rule', 'evenodd')
@@ -110,74 +153,22 @@ export default {
           .attr('ref', (d) => d.properties.name);
       }
 
-      ready(usAlbersCounties);
-
-      // eslint-disable-next-line no-unused-vars
-      const legendWrapper = this.legend({
-        color: d3.scaleSequential([0, 1000], d3.interpolateTurbo),
-        title: 'Infections',
-      });
-
-      const legend = document.getElementById('countyLegend');
-      legend.appendChild(legendWrapper);
-    },
-    renderUSA() {
-      const width = 960;
-      const height = 600;
-      const svg = d3.select('#usa')
-        .attr('width', width)
-        .attr('height', height);
-
-      // const projection = d3.geoMercator(); // corrected to line up on the screen
-      const projection = d3.geoAlbersUsa(); // correct to the full map
-      const path = d3.geoPath().projection(projection);
-
-      projection.scale(1).translate([0, 0]);
-      /**
-       * Bostock himself answered this question
-       * https://stackoverflow.com/questions/14492284/center-a-map-in-d3-given-a-geojson-object
-       * to help us other simple human beings figure out how in the world we are supposed
-       * to center these things.  Without this, the state renders with a bunch of empty
-       * space around it.
-       */
-      console.log(usAlbersCounties);
-      console.log(usAlbers);
-      const counties = topojson.feature(usAlbersCounties, usAlbersCounties.objects.collection);
-      const b = path.bounds(counties);
-      const s = 0.95 / Math.max((b[1][0] - b[0][0]) / width, (b[1][1] - b[0][1]) / height);
-      /* eslint-disable-next-line no-mixed-operators */
-      const t = [(width - s * (b[1][0] + b[0][0])) / 2, (height - s * (b[1][1] + b[0][1])) / 2];
-
-      projection.scale(s).translate(t);
-
-      function ready(allUSA) {
-        const usa = topojson.feature(allUSA, allUSA.objects.us).features;
-
-        svg
-          .selectAll('g')
-          .data(usa)
-          .enter()
-          .append('g')
-          .append('path')
-          .attr('d', path)
-          .attr('fill-rule', 'evenodd')
-          .attr('clip-rule', 'evenodd')
-          .attr('county-id', (d) => d.id)
-          .attr('county-name', (d) => d.properties.name)
-          .attr('class', 'county')
-          .attr('id', (d) => d.properties.name)
-          .attr('ref', (d) => d.properties.name);
+      if (states) {
+        ready(usAlbers);
+      } else {
+        ready(usAlbersCounties);
       }
 
-      ready(usAlbers);
 
       // eslint-disable-next-line no-unused-vars
       const legendWrapper = this.legend({
-        color: d3.scaleSequential([0, 1000], d3.interpolateTurbo),
+        color,
         title: 'Infections',
       });
 
-      const legend = document.getElementById('stateLegend');
+      const legend = states
+        ? document.getElementById('stateLegend')
+        : document.getElementById('countyLegend');
       legend.appendChild(legendWrapper);
     },
     legend({
@@ -325,7 +316,7 @@ export default {
   },
   mounted() {
     // http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6
-    this.renderUSA();
+    this.renderMap(true);
   },
 };
 </script>
