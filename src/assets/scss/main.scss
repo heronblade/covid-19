@@ -3,6 +3,10 @@
 // Components
 @import './components/choropleth';
 
+body {
+    background: #dddddd;
+}
+
 #app {
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;

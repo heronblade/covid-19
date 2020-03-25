@@ -8,7 +8,10 @@
              id="allCounties" name="maps" value="Counties">
       <label for="allCounties">Counties</label>
       <div class="date-slider">
-        <el-slider v-model="sliderState" :format-tooltip="formatTooltip"></el-slider>
+        <el-slider v-model="sliderState"
+                   :format-tooltip="formatTooltip"
+                   @change="handleSliderChange"
+        ></el-slider>
       </div>
     </div>
     <div class="covid__choropleth-wrapper">
@@ -43,19 +46,45 @@ export default {
     };
   },
   methods: {
+    /**
+     * Compare two dates (could be of any type supported by the convert
+     * function above) and returns:
+     * -1 : if a < b
+     * 0 : if a = b
+     * 1 : if a > b
+     * NaN : if a or b is an illegal date
+     * NOTE: The code inside isFinite does an assignment (=).
+     * @param {Date} a - first Date
+     * @param {Date} b - second date
+     * @return {number}
+     */
+    compareDates(a, b) {
+      // eslint-disable-next-line no-return-assign
+      return (
+        // eslint-disable-next-line no-restricted-globals
+        isFinite(a)
+        // eslint-disable-next-line no-restricted-globals
+        && isFinite(b)
+          ? (a > b) - (a < b)
+          : NaN
+      );
+    },
     formatTooltip(val) {
-      const startDate = new Date(2020, 0, 1);
-      startDate.setDate(val);
-      this.endDate = startDate;
-      const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
-        'Thursday', 'Friday', 'Saturday'];
-      const monthToString = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-        'August', 'September', 'October', 'November', 'December'];
-      const day = dayToString[startDate.getDay()];
-      const month = monthToString[startDate.getMonth()];
-      const dateOfMonth = startDate.getDate();
-      const year = startDate.getFullYear();
-      return `${day}, ${month} ${dateOfMonth} ${year} `;
+      if (val) {
+        const startDate = new Date(2020, 0, 1);
+        startDate.setDate(val);
+        this.endDate = startDate;
+        const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+          'Thursday', 'Friday', 'Saturday'];
+        const monthToString = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+          'August', 'September', 'October', 'November', 'December'];
+        const day = dayToString[startDate.getDay()];
+        const month = monthToString[startDate.getMonth()];
+        const dateOfMonth = startDate.getDate();
+        const year = startDate.getFullYear();
+        return `${day}, ${month} ${dateOfMonth} ${year} `;
+      }
+      return 'Date';
     },
     handleMapToggle() {
       this.showStates = !this.showStates;
@@ -65,17 +94,12 @@ export default {
         this.renderMap(false);
       }
     },
+    handleSliderChange() {
+      this.renderMap(this.showStates);
+    },
     renderMap(states) {
       const width = 960;
       const height = 600;
-
-      const svg = states
-        ? d3.select('#usa')
-          .attr('width', width)
-          .attr('height', height)
-        : d3.select('#counties')
-          .attr('width', width)
-          .attr('height', height);
 
       const tooltip = d3
         .select('.covid__choropleth-wrapper')
@@ -112,11 +136,22 @@ export default {
        * for these color figures
        */
       if (states) {
+        /**
+         * loop through the states data, and for each state, look at the current date, and
+         * pull that data.
+         */
+        const date = new Date(this.endDate);
         statesData.forEach((state) => {
-          infectionColors[state.name] = state.totals.infections;
+          const matchingDate = state.infections
+            .filter((infection) => this.compareDates(date, new Date(infection.date)) === 0)[0];
+          if (matchingDate) {
+            infectionColors[state.name] = matchingDate.number;
+          } else {
+            infectionColors[state.name] = state.totals.infections;
+          }
+          // infectionColors[state.name] = state.totals.infections;
         });
       } else {
-        console.log(countiesData);
         countiesData
           .filter((county) => county.totals)
           .forEach((county) => {
@@ -124,18 +159,19 @@ export default {
           });
       }
 
-      function handleMouseOver(d) {
+      function handleMouseOver(d, index, allElements) {
         d3.select(this)
           .transition()
           .duration(100)
           .style('opacity', 1);
+        const { infected } = allElements[index].attributes;
 
         tooltip
           .transition()
           .duration(100)
           .style('opacity', 0.9);
         tooltip
-          .html(d.properties.name)
+          .html(`${d.properties.name} ${infected.value}`)
           .style('left', `${d3.event.pageX}px`)
           .style('top', `${d3.event.pageY - 28}px`);
       }
@@ -156,6 +192,16 @@ export default {
           ? topojson.feature(topoData, topoData.objects.us).features
           : topojson.feature(topoData, topoData.objects.collection).features;
 
+        const svg = states
+          ? d3.select('#usa')
+            .attr('width', width)
+            .attr('height', height)
+          : d3.select('#counties')
+            .attr('width', width)
+            .attr('height', height);
+
+        svg.selectAll('*').remove();
+
         svg
           .selectAll('g')
           .data(usa)
@@ -166,6 +212,7 @@ export default {
           .on('mouseout', handleMouseOut)
           .style('opacity', 0.8)
           .style('fill', (d) => color(infectionColors[d.properties.name]))
+          .attr('infected', (d) => infectionColors[d.properties.name])
           .attr('d', path)
           .attr('fill-rule', 'evenodd')
           .attr('clip-rule', 'evenodd')
@@ -192,7 +239,15 @@ export default {
       const legend = states
         ? document.getElementById('stateLegend')
         : document.getElementById('countyLegend');
-      legend.appendChild(legendWrapper);
+      /**
+       * since we call this function every time the slider changes we only want
+       * to add the legend if there isn't one already there.
+       *
+       * Might want to change this so that the legend can have a range of more than 1k
+       */
+      if (legend.childNodes.length === 0) {
+        legend.appendChild(legendWrapper);
+      }
     },
     legend({
       color,
@@ -341,5 +396,11 @@ export default {
     // http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6
     this.renderMap(true);
   },
+  // watch: {
+  //   endDate() {
+  //     console.log(this.endDate);
+  //     this.renderMap(this.showStates);
+  //   },
+  // },
 };
 </script>
