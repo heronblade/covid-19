@@ -1,17 +1,29 @@
 <template>
   <div class="covid">
     <div class="covid__controls">
-      <input @click="handleMapToggle" type="radio"
-             id="allStates" name="maps" value="States" checked>
-      <label for="allStates">States</label>
-      <input @click="handleMapToggle" type="radio"
-             id="allCounties" name="maps" value="Counties">
-      <label for="allCounties">Counties</label>
+      <div class="radio-button">
+        <p>Choose between States or Counties</p>
+        <input @click="handleMapToggle" type="radio"
+               id="allStates" name="maps" value="States" checked>
+        <label for="allStates">States</label>
+        <input @click="handleMapToggle" type="radio"
+               id="allCounties" name="maps" value="Counties">
+        <label for="allCounties">Counties</label>
+      </div>
       <div class="date-slider">
-        <el-slider v-model="sliderState"
-                   :format-tooltip="formatTooltip"
-                   @change="handleSliderChange"
-        ></el-slider>
+        <div class="title"><span>Date Range</span></div>
+        <div class="date-slider__controls">
+          <i class="el-icon-back" @click="handlePreviousDayClick"></i>
+          <el-slider class="slider" v-model="sliderState"
+                     :format-tooltip="formatTooltip"
+                     @change="handleSliderChange"
+          ></el-slider>
+          <i class="el-icon-right" @click="handleNextDayClick"></i>
+        </div>
+        <div class="play-button-wrapper">
+          <el-button class="play-button" icon="el-icon-video-play"
+                     @click="handlePlayClick">Play</el-button>
+        </div>
       </div>
     </div>
     <div class="covid__choropleth-wrapper">
@@ -21,16 +33,15 @@
       <div id="countyLegend" :class="`show-${this.showCounties}`"></div>
     </div>
   </div>
-
 </template>
 
 <script>
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
+import axios from 'axios';
 import usAlbersCounties from '../../public/us-albers-counties.json';
 import usAlbers from '../../public/us-albers.json';
 import statesData from '../../public/states.json';
-
 import countiesData from '../../public/counties.json';
 
 export default {
@@ -38,7 +49,15 @@ export default {
   data() {
     return {
       clicked: false,
+      datePicker: '',
       endDate: '',
+      infectionColors: {},
+      nyTimesData: {
+        states: '',
+        counties: '',
+      },
+      playing: false,
+      radio: 1,
       showStates: true,
       showCounties: false,
       sliderState: 1,
@@ -69,6 +88,27 @@ export default {
           : NaN
       );
     },
+    csvJSON(csv) {
+      const lines = csv.split('\n');
+      const result = [];
+      const headers = lines[0].split(',');
+
+      // eslint-disable-next-line no-plusplus
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i]) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        const obj = {};
+        const currentline = lines[i].split(',');
+        // eslint-disable-next-line no-plusplus
+        for (let j = 0; j < headers.length; j++) {
+          obj[headers[j]] = currentline[j];
+        }
+        result.push(obj);
+      }
+      return result;
+    },
     formatTooltip(val) {
       if (val) {
         const startDate = new Date(2020, 0, 1);
@@ -86,6 +126,40 @@ export default {
       }
       return 'Date';
     },
+    getColor() {
+      return d3.scaleSequential([0, 1000], d3.interpolateBlues);
+    },
+    handlePreviousDayClick() {
+      console.log('handle prev day click');
+      this.sliderState -= 1;
+      this.renderMap(this.showStates);
+    },
+    handlePlayClick() {
+      const that = this;
+      let timer = {};
+      // const playButton = document.getElementsByClassName('play-button');
+      // console.log(playButton);
+
+      if (this.playing === false) {
+        timer = setInterval(() => {
+          if (that.sliderState <= 100) {
+            that.sliderState += 1;
+          } else {
+            that.sliderState = 0;
+          }
+          that.updateInfectionColors();
+          that.renderMap(this.showStates);
+          // d3.select('#clock').html(attributeArray[currentAttribute]);  // update the clock
+        }, 2000);
+
+        // d3.select(this).html('stop');  // change the button label to stop
+        this.playing = true;
+      } else {
+        clearInterval(timer);
+        // d3.select(this).html('play');
+        this.playing = false;
+      }
+    },
     handleMapToggle() {
       this.showStates = !this.showStates;
       this.showCounties = !this.showCounties;
@@ -94,18 +168,18 @@ export default {
         this.renderMap(false);
       }
     },
+    handleNextDayClick() {
+      console.log('handle next day click');
+      this.sliderState += 1;
+      this.renderMap(this.showStates);
+    },
     handleSliderChange() {
       this.renderMap(this.showStates);
     },
     renderMap(states) {
-      const width = 960;
-      const height = 600;
-
-      const tooltip = d3
-        .select('.covid__choropleth-wrapper')
-        .append('div')
-        .attr('class', 'covid__choropleth-tooltip')
-        .style('opacity', 0);
+      const that = this;
+      const width = 760;
+      const height = 500;
 
       // const projection = d3.geoMercator(); // corrected to line up on the screen
       const projection = d3.geoAlbersUsa(); // correct to the full map
@@ -128,64 +202,9 @@ export default {
       projection.scale(s).translate(t);
 
       // colors matched with data
-      const infectionColors = {};
-      const color = d3.scaleSequential([0, 1000], d3.interpolateBlues);
+      const color = this.getColor();
 
-      /**
-       * have to figure out if we are showing totals or we are showing up to the current date
-       * for these color figures
-       */
-      if (states) {
-        /**
-         * loop through the states data, and for each state, look at the current date, and
-         * pull that data.
-         */
-        const date = new Date(this.endDate);
-        statesData.forEach((state) => {
-          const matchingDate = state.infections
-            .filter((infection) => this.compareDates(date, new Date(infection.date)) === 0)[0];
-          if (matchingDate) {
-            infectionColors[state.name] = matchingDate.number;
-          } else {
-            infectionColors[state.name] = state.totals.infections;
-          }
-          // infectionColors[state.name] = state.totals.infections;
-        });
-      } else {
-        countiesData
-          .filter((county) => county.totals)
-          .forEach((county) => {
-            infectionColors[county.name] = county.totals.infections;
-          });
-      }
-
-      function handleMouseOver(d, index, allElements) {
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style('opacity', 1);
-        const { infected } = allElements[index].attributes;
-
-        tooltip
-          .transition()
-          .duration(100)
-          .style('opacity', 0.9);
-        tooltip
-          .html(`${d.properties.name} ${infected.value}`)
-          .style('left', `${d3.event.pageX}px`)
-          .style('top', `${d3.event.pageY - 28}px`);
-      }
-
-      function handleMouseOut() {
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style('opacity', 0.8);
-        tooltip
-          .transition()
-          .duration(100)
-          .style('opacity', 0);
-      }
+      this.updateInfectionColors();
 
       function ready(topoData) {
         const usa = states
@@ -208,17 +227,15 @@ export default {
           .enter()
           .append('g')
           .append('path')
-          .on('mouseover', handleMouseOver)
-          .on('mouseout', handleMouseOut)
           .style('opacity', 0.8)
-          .style('fill', (d) => color(infectionColors[d.properties.name]))
-          .attr('infected', (d) => infectionColors[d.properties.name])
+          .style('fill', (d) => color(that.infectionColors[d.properties.name]))
+          .attr('infected', (d) => that.infectionColors[d.properties.name])
           .attr('d', path)
           .attr('fill-rule', 'evenodd')
           .attr('clip-rule', 'evenodd')
           .attr('county-id', (d) => d.id)
           .attr('county-name', (d) => d.properties.name)
-          .attr('class', 'county')
+          .attr('class', `${states ? 'state' : 'county'}`)
           .attr('id', (d) => d.properties.name)
           .attr('ref', (d) => d.properties.name);
       }
@@ -391,10 +408,69 @@ export default {
       }
       return canvas;
     },
+    updateInfectionColors() {
+      const that = this;
+      /**
+       * have to figure out if we are showing totals or we are showing up to the current date
+       * for these color figures
+       */
+      if (this.showStates) {
+        /**
+         * loop through the states data, and for each state, look at the current date, and
+         * pull that data.
+         */
+        const date = new Date(this.endDate);
+        statesData.forEach((state) => {
+          const matchingDate = state.infections
+            .filter((infection) => this.compareDates(date, new Date(infection.date)) === 0)[0];
+          if (matchingDate) {
+            that.infectionColors[state.name] = matchingDate.number;
+          } else {
+            that.infectionColors[state.name] = state.totals.infections;
+          }
+        });
+      } else {
+        countiesData
+          .filter((county) => county.totals)
+          .forEach((county) => {
+            that.infectionColors[county.name] = county.totals.infections;
+          });
+      }
+    },
+
   },
   mounted() {
-    // http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6
+    // http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6 - main example
+    // http://bl.ocks.org/rgdonohue/9280446 - animation example
+    // https://observablehq.com/@d3/color-legend - color legend
+    // http://91-divoc.com/pages/covid-visualization - covid bar graph
+    // https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#g-cases-by-county
+    // https://coronavirus.jhu.edu/map.html
+    // https://github.com/CSSEGISandData/COVID-19 - Johns Hopkins CSSE Data
+    // https://www.cnn.com/interactive/2020/health/coronavirus-maps-and-cases - Animated bubble map
+    // https://github.com/nytimes/covid-19-data - NY Times data
     this.renderMap(true);
+    const that = this;
+
+    axios.get('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv',
+      {
+        responseType: 'blob',
+      })
+      .then(async (response) => {
+        const res = await response.data.text();
+        that.nyTimesData.states = that.csvJSON(res);
+      })
+      .catch((error) => error);
+
+    axios.get('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
+      {
+        responseType: 'blob',
+      })
+      .then(async (response) => {
+        const res = await response.data.text();
+        that.nyTimesData.counties = that.csvJSON(res);
+      })
+      .catch((error) => error);
   },
   // watch: {
   //   endDate() {
@@ -402,5 +478,19 @@ export default {
   //     this.renderMap(this.showStates);
   //   },
   // },
+  // TODO: make it so the date cannot go past the latest date available
+  // TODO: show date as time moves, and add a pause button.
+  // TODO: add a reset button
+  /**
+   * the layer aboe it should be heat bubbles based on the number of cases
+   * lifehacker has a site up that i can look at
+   * make it two things up here so you have the map and you have the bar graph like
+   * http://91-divoc.com/pages/covid-visualization/
+   *
+   * vintage - population analytics (loss triangles)
+   *
+   * the bubbles will be overlayed in there because they talk about the spread. need to be able
+   * to turn the cirlces off on/off switch
+   */
 };
 </script>

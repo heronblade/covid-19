@@ -31,3 +31,8 @@ body {
 .show-false {
     display: none;
 }
+
+// element ui overrides
+.el-input__prefix {
+    height: 42% !important;
+}

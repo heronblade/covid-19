@@ -9,6 +9,23 @@
         }
     }
 
+    &__controls {
+        display: flex;
+        justify-content: space-around;
+        .date-slider {
+            width: 30%;
+
+            &__controls {
+                display: flex;
+                justify-content: space-between;
+
+                .slider {
+                    width: 80%;
+                }
+            }
+        }
+    }
+
     &__choropleth-tooltip {
         position: absolute;
         text-align: center;
