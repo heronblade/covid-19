@@ -41,7 +41,6 @@ import * as topojson from 'topojson-client';
 import axios from 'axios';
 import usAlbersCounties from '../../public/us-albers-counties.json';
 import usAlbers from '../../public/us-albers.json';
-import statesData from '../../public/states.json';
 import countiesData from '../../public/counties.json';
 
 export default {
@@ -56,11 +55,12 @@ export default {
         states: '',
         counties: '',
       },
+      nyTimesStartDate: '',
       playing: false,
       radio: 1,
       showStates: true,
       showCounties: false,
-      sliderState: 1,
+      sliderState: 21, // first day we have data for
       countiesRendered: false,
     };
   },
@@ -88,7 +88,7 @@ export default {
           : NaN
       );
     },
-    csvJSON(csv) {
+    csvToJSON(csv) {
       const lines = csv.split('\n');
       const result = [];
       const headers = lines[0].split(',');
@@ -111,7 +111,7 @@ export default {
     },
     formatTooltip(val) {
       if (val) {
-        const startDate = new Date(2020, 0, 1);
+        const startDate = new Date(2020, 0, 21);
         startDate.setDate(val);
         this.endDate = startDate;
         const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
@@ -130,7 +130,6 @@ export default {
       return d3.scaleSequential([0, 1000], d3.interpolateBlues);
     },
     handlePreviousDayClick() {
-      console.log('handle prev day click');
       this.sliderState -= 1;
       this.renderMap(this.showStates);
     },
@@ -169,7 +168,6 @@ export default {
       }
     },
     handleNextDayClick() {
-      console.log('handle next day click');
       this.sliderState += 1;
       this.renderMap(this.showStates);
     },
@@ -419,14 +417,13 @@ export default {
          * loop through the states data, and for each state, look at the current date, and
          * pull that data.
          */
-        const date = new Date(this.endDate);
-        statesData.forEach((state) => {
-          const matchingDate = state.infections
-            .filter((infection) => this.compareDates(date, new Date(infection.date)) === 0)[0];
-          if (matchingDate) {
-            that.infectionColors[state.name] = matchingDate.number;
-          } else {
-            that.infectionColors[state.name] = state.totals.infections;
+        const date = this.endDate;
+        this.nyTimesData.states.forEach((state) => {
+          const stateDate = new Date(state.date);
+          if (date.getDate() === stateDate.getDate()
+                  && date.getMonth() === stateDate.getMonth()
+                  && date.getFullYear() === stateDate.getFullYear()) {
+            that.infectionColors[state.state] = state.cases;
           }
         });
       } else {
@@ -440,37 +437,49 @@ export default {
 
   },
   mounted() {
-    // http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6 - main example
-    // http://bl.ocks.org/rgdonohue/9280446 - animation example
-    // https://observablehq.com/@d3/color-legend - color legend
-    // http://91-divoc.com/pages/covid-visualization - covid bar graph
-    // https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#g-cases-by-county
-    // https://coronavirus.jhu.edu/map.html
-    // https://github.com/CSSEGISandData/COVID-19 - Johns Hopkins CSSE Data
-    // https://www.cnn.com/interactive/2020/health/coronavirus-maps-and-cases - Animated bubble map
-    // https://github.com/nytimes/covid-19-data - NY Times data
-    this.renderMap(true);
+    /**
+     * Links
+     * http://bl.ocks.org/jadiehm/af4a00140c213dfbc4e6 - main example
+     * http://bl.ocks.org/rgdonohue/9280446 - animation example
+     * https://observablehq.com/@d3/color-legend - color legend
+     * http://91-divoc.com/pages/covid-visualization - covid bar graph
+     * https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#g-cases-by-county
+     * https://coronavirus.jhu.edu/map.html
+     * https://github.com/CSSEGISandData/COVID-19 - Johns Hopkins CSSE Data
+     * https://www.cnn.com/interactive/2020/health/coronavirus-maps-and-cases - Animated bubble map
+     * https://github.com/nytimes/covid-19-data - NY Times data
+     */
     const that = this;
 
-    axios.get('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv',
-      {
+    function getStateData() {
+      const payload = {
+        url: 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv',
+        method: 'GET',
         responseType: 'blob',
-      })
-      .then(async (response) => {
-        const res = await response.data.text();
-        that.nyTimesData.states = that.csvJSON(res);
-      })
-      .catch((error) => error);
+      };
+      return axios(payload);
+    }
 
-    axios.get('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
-      {
+    function getCountyData() {
+      const payload = {
+        url: 'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
+        method: 'GET',
         responseType: 'blob',
-      })
-      .then(async (response) => {
-        const res = await response.data.text();
-        that.nyTimesData.counties = that.csvJSON(res);
-      })
-      .catch((error) => error);
+      };
+      return axios(payload);
+    }
+
+    axios.all([getStateData(), getCountyData()])
+      .then(axios.spread(async (stateData, countyData) => {
+        const stateResponse = await stateData.data.text();
+        const countyResponse = await countyData.data.text();
+        that.nyTimesData.states = that.csvToJSON(stateResponse);
+        that.nyTimesData.counties = that.csvToJSON(countyResponse);
+        that.renderMap(true);
+      }))
+      .catch((error) => {
+        console.log(error);
+      });
   },
   // watch: {
   //   endDate() {
