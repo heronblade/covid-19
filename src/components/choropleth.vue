@@ -41,7 +41,6 @@ import * as topojson from 'topojson-client';
 import axios from 'axios';
 import usAlbersCounties from '../../public/us-albers-counties.json';
 import usAlbers from '../../public/us-albers.json';
-import countiesData from '../../public/counties.json';
 
 export default {
   name: 'choropleth',
@@ -51,6 +50,8 @@ export default {
       datePicker: '',
       endDate: '',
       infectionColors: {},
+      maxCases: 0,
+      numberOfDays: 70,
       nyTimesData: {
         states: '',
         counties: '',
@@ -78,15 +79,9 @@ export default {
      * @return {number}
      */
     compareDates(a, b) {
-      // eslint-disable-next-line no-return-assign
-      return (
-        // eslint-disable-next-line no-restricted-globals
-        isFinite(a)
-        // eslint-disable-next-line no-restricted-globals
-        && isFinite(b)
-          ? (a > b) - (a < b)
-          : NaN
-      );
+      return a.getDate() === b.getDate()
+      && a.getMonth() === b.getMonth()
+      && a.getFullYear() === b.getFullYear();
     },
     csvToJSON(csv) {
       const lines = csv.split('\n');
@@ -127,7 +122,8 @@ export default {
       return 'Date';
     },
     getColor() {
-      return d3.scaleSequential([0, 1000], d3.interpolateBlues);
+      return d3.scaleSequentialSqrt([0, this.maxCases], d3.interpolateBlues);
+      // return d3.scaleSequential([0, 1000], d3.interpolateBlues);
     },
     handlePreviousDayClick() {
       this.sliderState -= 1;
@@ -202,6 +198,8 @@ export default {
       // colors matched with data
       const color = this.getColor();
 
+      // reset the infection colors
+      this.infectionColors = {};
       this.updateInfectionColors();
 
       function ready(topoData) {
@@ -219,6 +217,8 @@ export default {
 
         svg.selectAll('*').remove();
 
+        const fips = states ? 'fips_state' : 'fips';
+
         svg
           .selectAll('g')
           .data(usa)
@@ -226,7 +226,7 @@ export default {
           .append('g')
           .append('path')
           .style('opacity', 0.8)
-          .style('fill', (d) => color(that.infectionColors[d.properties.name]))
+          .style('fill', (d) => color(that.infectionColors[d.properties[`${fips}`]]))
           .attr('infected', (d) => that.infectionColors[d.properties.name])
           .attr('d', path)
           .attr('fill-rule', 'evenodd')
@@ -394,6 +394,16 @@ export default {
 
       return svg.node();
     },
+    parseData() {
+      this.maxCases = Math.max(
+        ...this.nyTimesData.states.map((state) => parseInt(state.cases, 10)),
+      );
+      const startDate = new Date(2020, 0, 21);
+      const endDate = new Date();
+      this.numberOfDays = Math.round(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24),
+      );
+    },
     ramp(color, n = 256) {
       const canvas = document.createElement('canvas');
       canvas.width = n;
@@ -408,6 +418,7 @@ export default {
     },
     updateInfectionColors() {
       const that = this;
+      const date = this.endDate;
       /**
        * have to figure out if we are showing totals or we are showing up to the current date
        * for these color figures
@@ -417,24 +428,21 @@ export default {
          * loop through the states data, and for each state, look at the current date, and
          * pull that data.
          */
-        const date = this.endDate;
         this.nyTimesData.states.forEach((state) => {
           const stateDate = new Date(state.date);
-          if (date.getDate() === stateDate.getDate()
-                  && date.getMonth() === stateDate.getMonth()
-                  && date.getFullYear() === stateDate.getFullYear()) {
-            that.infectionColors[state.state] = state.cases;
+          if (that.compareDates(date, stateDate)) {
+            that.infectionColors[state.fips] = state.cases;
           }
         });
       } else {
-        countiesData
-          .filter((county) => county.totals)
-          .forEach((county) => {
-            that.infectionColors[county.name] = county.totals.infections;
-          });
+        this.nyTimesData.counties.forEach((county) => {
+          const countyDate = new Date(county.date);
+          if (that.compareDates(date, countyDate)) {
+            that.infectionColors[county.fips] = county.cases;
+          }
+        });
       }
     },
-
   },
   mounted() {
     /**
@@ -475,6 +483,8 @@ export default {
         const countyResponse = await countyData.data.text();
         that.nyTimesData.states = that.csvToJSON(stateResponse);
         that.nyTimesData.counties = that.csvToJSON(countyResponse);
+        // need to parse some information out of the data.  need start/end date, and max #
+        that.parseData();
         that.renderMap(true);
       }))
       .catch((error) => {
