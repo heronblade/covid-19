@@ -2,19 +2,22 @@
   <div class="covid">
     <div class="covid__controls">
       <div class="radio-button">
-        <p>Choose between States or Counties</p>
-        <input @click="handleMapToggle" type="radio"
-               id="allStates" name="maps" value="States" checked>
-        <label for="allStates">States</label>
-        <input @click="handleMapToggle" type="radio"
-               id="allCounties" name="maps" value="Counties">
-        <label for="allCounties">Counties</label>
-        <input @click="handleDataTypeChange" type="radio"
-               id="cases" name="dataType" value="Cases">
-        <label for="cases">Cases</label>
-        <input @click="handleDataTypeChange" type="radio"
-               id="deaths" name="dataType" value="Deaths">
-        <label for="deaths">Deaths</label>
+        <p>Choose between Infections and Deaths</p>
+        <div class="onoffswitch">
+          <input type="checkbox" name="onoffswitch"
+                 @click="handleDataTypeChange"
+                 class="onoffswitch-checkbox" id="myonoffswitch" checked>
+          <label class="onoffswitch-label" for="myonoffswitch">
+            <span class="onoffswitch-inner"></span>
+            <span class="onoffswitch-switch"></span>
+          </label>
+        </div>
+<!--        <input @click="handleDataTypeChange" type="radio"-->
+<!--               id="cases" name="dataType" value="Cases">-->
+<!--        <label for="cases">Cases</label>-->
+<!--        <input @click="handleDataTypeChange" type="radio"-->
+<!--               id="deaths" name="dataType" value="Deaths">-->
+<!--        <label for="deaths">Deaths</label>-->
       </div>
       <div class="current-date">{{this.formattedPlayDate}}</div>
       <div class="date-slider">
@@ -41,10 +44,6 @@
     </div>
     <div class="covid__choropleth-wrapper">
       <div class="viz"></div>
-<!--      <svg id="usa" :class="`show-${this.showStates}`"></svg>-->
-<!--      <svg id="counties" :class="`show-${this.showCounties}`"></svg>-->
-<!--      <div id="stateLegend" :class="`show-${this.showStates}`"></div>-->
-<!--      <div id="countyLegend" :class="`show-${this.showCounties}`"></div>-->
     </div>
     <div class="covid__sources">
       <p>Data coming from <a href="https://github.com/nytimes/covid-19-data">NY Times Github</a></p>
@@ -65,6 +64,7 @@ export default {
   data() {
     return {
       clicked: false,
+      dataType: 'infections',
       datePicker: '',
       endDate: new Date(),
       formattedPlayDate: '',
@@ -81,6 +81,7 @@ export default {
         height: 500,
         defaultRatio: 1.52,
       },
+      maxDeaths: 0,
       maxCases: 0,
       numberOfDays: 70,
       nyTimesData: {
@@ -88,6 +89,7 @@ export default {
         counties: '',
       },
       nyTimesStartDate: '',
+      paused: false,
       pickerOptions: {
         disabledDate(time) {
           return time.getTime() > Date.now();
@@ -161,51 +163,58 @@ export default {
       }
       return result;
     },
-    getColor() {
+    getColor(color) {
+      if (color === 'deaths') {
+        return d3.scaleSequentialSqrt([0, this.maxDeaths], d3.interpolateReds);
+      }
       return d3.scaleSequentialSqrt([0, this.maxCases], d3.interpolateBlues);
       // return d3.scaleSequential([0, 1000], d3.interpolateBlues);
     },
-    handleDataTypeChange() {
+    handleDataTypeChange(e) {
       console.log('handle type change');
-    },
-    handleMapToggle() {
-      this.showStates = !this.showStates;
-      this.showCounties = !this.showCounties;
-      this.renderMap(this.showStates);
+      console.log(e);
+      const { checked } = e.toElement;
+      if (checked) {
+        this.dataType = 'infections';
+      } else {
+        this.dataType = 'deaths';
+      }
+      this.updateInfectionColors();
+      this.updateMap();
     },
     handlePlayClick() {
       const that = this;
-      let timer = {};
       /**
        * Need to grab the start date, and the end date and then increment
        * play date by 1 until we get to the end date
        */
       if (this.playing === false) {
         // set playDate to startDate
-        this.playDate = this.startDate;
+        // only want to do this if we haven't paused
+        // eslint-disable-next-line no-unused-expressions
+        this.paused ? null : this.playDate = this.startDate;
         // change value of play button
         document.getElementsByClassName('play-button')[0].innerHTML = 'Pause';
-        timer = setInterval(() => {
+        window.mapTimer = setInterval(() => {
           // need to have the stop functionality here
           const done = this.compareDates(this.playDate, this.endDate);
           if (done) {
             document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
-            clearInterval(timer);
+            clearInterval(window.mapTimer);
+            this.paused = false;
             return;
           }
           that.updateInfectionColors();
           that.updateMap();
-          // that.renderBothMaps();
-          // that.renderMap(this.showStates);
-
           // increment playDate
           this.playDate = new Date(this.playDate.setDate(this.playDate.getDate() + 1));
         }, 100);
         this.playing = true;
       } else {
-        clearInterval(timer);
-        document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
         this.playing = false;
+        this.paused = true;
+        clearInterval(window.mapTimer);
+        document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
       }
     },
     handleWindowResize() {
@@ -218,7 +227,7 @@ export default {
             .selectAll('svg')
             .remove();
           that.setMapMeasurements();
-          that.renderBothMaps();
+          that.renderMap();
         }, 100);
       };
     },
@@ -233,105 +242,8 @@ export default {
       const year = date.getFullYear();
       return `${day}, ${month} ${dateOfMonth} ${year}`;
     },
-    renderMap(states) {
+    renderMap() {
       const that = this;
-      const width = 760;
-      const height = 500;
-
-      // const projection = d3.geoMercator(); // corrected to line up on the screen
-      const projection = d3.geoAlbersUsa(); // correct to the full map
-      const path = d3.geoPath().projection(projection);
-
-      projection.scale(1).translate([0, 0]);
-      /**
-       * Bostock himself answered this question
-       * https://stackoverflow.com/questions/14492284/center-a-map-in-d3-given-a-geojson-object
-       * to help us other simple human beings figure out how in the world we are supposed
-       * to center these things.  Without this, the state renders with a bunch of empty
-       * space around it.
-       */
-      const counties = topojson.feature(usAlbersCounties, usAlbersCounties.objects.collection);
-      const b = path.bounds(counties);
-      const s = 0.95 / Math.max((b[1][0] - b[0][0]) / width, (b[1][1] - b[0][1]) / height);
-      /* eslint-disable-next-line no-mixed-operators */
-      const t = [(width - s * (b[1][0] + b[0][0])) / 2, (height - s * (b[1][1] + b[0][1])) / 2];
-
-      projection.scale(s).translate(t);
-
-      // colors matched with data
-      const color = this.getColor();
-
-      // reset the infection colors
-      this.updateInfectionColors();
-
-      function ready(topoData) {
-        const usa = states
-          ? topojson.feature(topoData, topoData.objects.us).features
-          : topojson.feature(topoData, topoData.objects.collection).features;
-
-        const svg = states
-          ? d3.select('#usa')
-            .attr('width', width)
-            .attr('height', height)
-          : d3.select('#counties')
-            .attr('width', width)
-            .attr('height', height);
-
-        svg.selectAll('*').remove();
-
-        const fips = states ? 'fips_state' : 'fips';
-
-        svg
-          .selectAll('g')
-          .data(usa)
-          .enter()
-          .append('g')
-          .append('path')
-          .style('opacity', 0.8)
-          .style('fill', (d) => color(that.infectionColors[d.properties[`${fips}`]]))
-          .attr('d', path)
-          .attr('fill-rule', 'evenodd')
-          .attr('clip-rule', 'evenodd')
-          .attr('county-id', (d) => d.id)
-          .attr('county-name', (d) => d.properties.name)
-          .attr('class', `${states ? 'state' : 'county'}`)
-          .attr('id', (d) => d.properties.name)
-          .attr('ref', (d) => d.properties.name);
-      }
-
-      if (states) {
-        ready(usAlbers);
-      } else {
-        ready(usAlbersCounties);
-      }
-
-
-      // eslint-disable-next-line no-unused-vars
-      const legendWrapper = this.legend({
-        color,
-        title: 'Infections',
-      });
-
-      const legend = states
-        ? document.getElementById('stateLegend')
-        : document.getElementById('countyLegend');
-      /**
-       * since we call this function every time the slider changes we only want
-       * to add the legend if there isn't one already there.
-       *
-       * Might want to change this so that the legend can have a range of more than 1k
-       */
-      if (legend.childNodes.length === 0) {
-        legend.appendChild(legendWrapper);
-      }
-    },
-    renderBothMaps() {
-      const that = this;
-      // eslint-disable-next-line operator-linebreak
-      // this.mapMeasurements.width = this.mapMeasurements.width
-      //   - this.mapMeasurements.margin.left - this.mapMeasurements.margin.right;
-      // this.mapMeasurements.height = this.mapMeasurements.width
-      //   * this.mapMeasurements.defaultRatio;
       let active = d3.select(null);
 
       const svg = d3.select('.viz').append('svg')
@@ -342,8 +254,6 @@ export default {
         // eslint-disable-next-line operator-linebreak
         .attr('width', this.mapMeasurements.width +
           this.mapMeasurements.margin.left + this.mapMeasurements.margin.right);
-
-      // svg.selectAll('svg').remove();
 
       svg.append('rect')
         .attr('class', 'background center-container')
@@ -364,7 +274,7 @@ export default {
         .projection(projection);
 
       // colors matched with data
-      const color = this.getColor();
+      const color = this.getColor(this.dataType);
 
       // reset the infection colors
       this.updateInfectionColors();
@@ -450,139 +360,12 @@ export default {
             `translate(${that.mapMeasurements.margin.left},${that.mapMeasurements.margin.top})`);
       }
     },
-    legend({
-      color,
-      title,
-      tickSize = 6,
-      width = 500,
-      height = 44 + tickSize,
-      marginTop = 18,
-      marginRight = 0,
-      marginBottom = 16 + tickSize,
-      marginLeft = 0,
-      ticks = width / 64,
-      tickFormat,
-      tickValues,
-    } = {}) {
-      // https://observablehq.com/@d3/color-legend
-      const svg = d3.create('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .attr('viewBox', [0, 0, width, height])
-        .style('overflow', 'visible')
-        .style('display', 'block');
-
-      let tickAdjust = (g) => g.selectAll('.tick line').attr('y1', marginTop + marginBottom - height);
-      let x;
-
-      // Continuous
-      if (color.interpolate) {
-        const n = Math.min(color.domain().length, color.range().length);
-
-        x = color.copy()
-          .rangeRound(d3.quantize(d3.interpolate(marginLeft, width - marginRight), n));
-
-        svg.append('image')
-          .attr('x', marginLeft)
-          .attr('y', marginTop)
-          .attr('width', width - marginLeft - marginRight)
-          .attr('height', height - marginTop - marginBottom)
-          .attr('preserveAspectRatio', 'none')
-          .attr('xlink:href', this.ramp(color.copy().domain(d3.quantize(d3.interpolate(0, 1), n))).toDataURL());
-      } else if (color.interpolator) { // Sequential
-        x = Object.assign(color.copy()
-          .interpolator(d3.interpolateRound(marginLeft, width - marginRight)),
-        { range() { return [marginLeft, width - marginRight]; } });
-
-        svg.append('image')
-          .attr('x', marginLeft)
-          .attr('y', marginTop)
-          .attr('width', width - marginLeft - marginRight)
-          .attr('height', height - marginTop - marginBottom)
-          .attr('preserveAspectRatio', 'none')
-          .attr('xlink:href', this.ramp(color.interpolator()).toDataURL());
-
-        // scaleSequentialQuantile doesn’t implement ticks or tickFormat.
-        if (!x.ticks) {
-          if (tickValues === undefined) {
-            const n = Math.round(ticks + 1);
-            // eslint-disable-next-line no-param-reassign
-            tickValues = d3.range(n).map((i) => d3.quantile(color.domain(), i / (n - 1)));
-          }
-          if (typeof tickFormat !== 'function') {
-            // eslint-disable-next-line no-param-reassign
-            tickFormat = d3.format(tickFormat === undefined ? ',f' : tickFormat);
-          }
-        }
-      } else if (color.invertExtent) { // Threshold
-        // eslint-disable-next-line no-nested-ternary
-        const thresholds = color.thresholds ? color.thresholds() // scaleQuantize
-          : color.quantiles ? color.quantiles() // scaleQuantile
-            : color.domain(); // scaleThreshold
-
-        // eslint-disable-next-line no-nested-ternary
-        const thresholdFormat = tickFormat === undefined ? (d) => d
-          : typeof tickFormat === 'string' ? d3.format(tickFormat)
-            : tickFormat;
-
-        x = d3.scaleLinear()
-          .domain([-1, color.range().length - 1])
-          .rangeRound([marginLeft, width - marginRight]);
-
-        svg.append('g')
-          .selectAll('rect')
-          .data(color.range())
-          .join('rect')
-          .attr('x', (d, i) => x(i - 1))
-          .attr('y', marginTop)
-          .attr('width', (d, i) => x(i) - x(i - 1))
-          .attr('height', height - marginTop - marginBottom)
-          .attr('fill', (d) => d);
-
-        // eslint-disable-next-line no-param-reassign
-        tickValues = d3.range(thresholds.length);
-        // eslint-disable-next-line no-param-reassign
-        tickFormat = (i) => thresholdFormat(thresholds[i], i);
-      } else { // Ordinal
-        x = d3.scaleBand()
-          .domain(color.domain())
-          .rangeRound([marginLeft, width - marginRight]);
-
-        svg.append('g')
-          .selectAll('rect')
-          .data(color.domain())
-          .join('rect')
-          .attr('x', x)
-          .attr('y', marginTop)
-          .attr('width', Math.max(0, x.bandwidth() - 1))
-          .attr('height', height - marginTop - marginBottom)
-          .attr('fill', color);
-
-        tickAdjust = () => {};
-      }
-
-      svg.append('g')
-        .attr('transform', `translate(0,${height - marginBottom})`)
-        .call(d3.axisBottom(x)
-          .ticks(ticks, typeof tickFormat === 'string' ? tickFormat : undefined)
-          .tickFormat(typeof tickFormat === 'function' ? tickFormat : undefined)
-          .tickSize(tickSize)
-          .tickValues(tickValues))
-        .call(tickAdjust)
-        .call((g) => g.select('.domain').remove())
-        .call((g) => g.append('text')
-          .attr('x', marginLeft)
-          .attr('y', marginTop + marginBottom - height - 6)
-          .attr('fill', 'currentColor')
-          .attr('text-anchor', 'start')
-          .attr('font-weight', 'bold')
-          .text(title));
-
-      return svg.node();
-    },
     parseData() {
       this.maxCases = Math.max(
         ...this.nyTimesData.states.map((state) => parseInt(state.cases, 10)),
+      );
+      this.maxDeaths = Math.max(
+        ...this.nyTimesData.states.map((state) => parseInt(state.deaths, 10)),
       );
       const startDate = new Date(2020, 0, 21);
       const endDate = new Date();
@@ -594,18 +377,6 @@ export default {
       this.playDate = new Date(this.nyTimesData.states.pop().date);
       this.endDate = new Date(this.nyTimesData.states.pop().date);
       this.lastPulledDate = this.formatDate(new Date(this.nyTimesData.states.pop().date));
-    },
-    ramp(color, n = 256) {
-      const canvas = document.createElement('canvas');
-      canvas.width = n;
-      canvas.height = 1;
-      const context = canvas.getContext('2d');
-      // eslint-disable-next-line no-plusplus
-      for (let i = 0; i < n; ++i) {
-        context.fillStyle = color(i / (n - 1));
-        context.fillRect(i, 0, 1, 1);
-      }
-      return canvas;
     },
     setMapMeasurements() {
       const currentWidth = window.innerWidth - 100;
@@ -637,18 +408,35 @@ export default {
       this.infectionColors = {};
       const that = this;
       const date = this.playDate;
-      this.nyTimesData.states.forEach((state) => {
-        const stateDate = new Date(state.date);
-        if (that.compareDates(date, stateDate)) {
-          that.infectionColors[state.fips] = state.cases;
-        }
-      });
-      this.nyTimesData.counties.forEach((county) => {
-        const countyDate = new Date(county.date);
-        if (that.compareDates(date, countyDate)) {
-          that.infectionColors[county.fips] = county.cases;
-        }
-      });
+      console.log(this.dataType);
+      if (this.dataType === 'infections') {
+        this.nyTimesData.states.forEach((state) => {
+          const stateDate = new Date(state.date);
+          if (that.compareDates(date, stateDate)) {
+            that.infectionColors[state.fips] = state.cases;
+          }
+        });
+        this.nyTimesData.counties.forEach((county) => {
+          const countyDate = new Date(county.date);
+          if (that.compareDates(date, countyDate)) {
+            that.infectionColors[county.fips] = county.cases;
+          }
+        });
+      } else {
+        this.nyTimesData.states.forEach((state) => {
+          const stateDate = new Date(state.date);
+          if (that.compareDates(date, stateDate)) {
+            that.infectionColors[state.fips] = state.deaths;
+          }
+        });
+        this.nyTimesData.counties.forEach((county) => {
+          const countyDate = new Date(county.date);
+          if (that.compareDates(date, countyDate)) {
+            that.infectionColors[county.fips] = county.deaths;
+          }
+        });
+      }
+
       /**
        * have to figure out if we are showing totals or we are showing up to the current date
        * for these color figures
@@ -675,7 +463,7 @@ export default {
     },
     updateMap() {
       const that = this;
-      const color = this.getColor();
+      const color = this.getColor(this.dataType);
       d3
         .select('#counties')
         .selectAll('path')
@@ -731,7 +519,7 @@ export default {
         // that.renderMap(true);
         that.handleWindowResize();
         that.setMapMeasurements();
-        that.renderBothMaps();
+        that.renderMap();
       }))
       .catch((error) => {
         console.log(error);
