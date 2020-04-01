@@ -9,28 +9,46 @@
         <input @click="handleMapToggle" type="radio"
                id="allCounties" name="maps" value="Counties">
         <label for="allCounties">Counties</label>
+        <input @click="handleDataTypeChange" type="radio"
+               id="cases" name="dataType" value="Cases">
+        <label for="cases">Cases</label>
+        <input @click="handleDataTypeChange" type="radio"
+               id="deaths" name="dataType" value="Deaths">
+        <label for="deaths">Deaths</label>
       </div>
+      <div class="current-date">{{this.formattedPlayDate}}</div>
       <div class="date-slider">
         <div class="title"><span>Date Range</span></div>
         <div class="date-slider__controls">
-          <i class="el-icon-back" @click="handlePreviousDayClick"></i>
-          <el-slider class="slider" v-model="sliderState"
-                     :format-tooltip="formatTooltip"
-                     @change="handleSliderChange"
-          ></el-slider>
-          <i class="el-icon-right" @click="handleNextDayClick"></i>
+          <el-date-picker
+            v-model="startDate"
+            type="date"
+            placeholder="Pick Start Date"
+            :picker-options="pickerOptions"
+          ></el-date-picker>
+          <el-date-picker
+            v-model="endDate"
+            type="date"
+            placeholder="Pick End Date"
+            :picker-options="pickerOptions"
+          ></el-date-picker>
         </div>
         <div class="play-button-wrapper">
-          <el-button class="play-button" icon="el-icon-video-play"
+          <el-button class="play-button"
                      @click="handlePlayClick">Play</el-button>
         </div>
       </div>
     </div>
     <div class="covid__choropleth-wrapper">
+      <div class="viz"></div>
       <svg id="usa" :class="`show-${this.showStates}`"></svg>
       <svg id="counties" :class="`show-${this.showCounties}`"></svg>
       <div id="stateLegend" :class="`show-${this.showStates}`"></div>
       <div id="countyLegend" :class="`show-${this.showCounties}`"></div>
+    </div>
+    <div class="covid__sources">
+      <p>Data coming from <a href="https://github.com/nytimes/covid-19-data">NY Times Github</a></p>
+      <p>Last updated {{lastPulledDate}}</p>
     </div>
   </div>
 </template>
@@ -48,8 +66,21 @@ export default {
     return {
       clicked: false,
       datePicker: '',
-      endDate: '',
+      endDate: new Date(),
+      formattedPlayDate: '',
       infectionColors: {},
+      lastPulledDate: '',
+      mapMeasurements: {
+        margin: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10,
+        },
+        width: 760,
+        height: 500,
+        defaultRatio: 1.52,
+      },
       maxCases: 0,
       numberOfDays: 70,
       nyTimesData: {
@@ -57,12 +88,38 @@ export default {
         counties: '',
       },
       nyTimesStartDate: '',
+      pickerOptions: {
+        disabledDate(time) {
+          return time.getTime() > Date.now();
+        },
+        shortcuts: [{
+          text: 'Today',
+          onClick(picker) {
+            picker.$emit('pick', new Date());
+          },
+        }, {
+          text: 'Yesterday',
+          onClick(picker) {
+            const date = new Date();
+            date.setTime(date.getTime() - 3600 * 1000 * 24);
+            picker.$emit('pick', date);
+          },
+        }, {
+          text: 'A week ago',
+          onClick(picker) {
+            const date = new Date();
+            date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
+            picker.$emit('pick', date);
+          },
+        }],
+      },
       playing: false,
+      playDate: '',
       radio: 1,
       showStates: true,
       showCounties: false,
+      startDate: new Date(2020, 0, 21),
       sliderState: 21, // first day we have data for
-      countiesRendered: false,
     };
   },
   methods: {
@@ -104,71 +161,76 @@ export default {
       }
       return result;
     },
-    formatTooltip(val) {
-      if (val) {
-        const startDate = new Date(2020, 0, 21);
-        startDate.setDate(val);
-        this.endDate = startDate;
-        const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
-          'Thursday', 'Friday', 'Saturday'];
-        const monthToString = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-          'August', 'September', 'October', 'November', 'December'];
-        const day = dayToString[startDate.getDay()];
-        const month = monthToString[startDate.getMonth()];
-        const dateOfMonth = startDate.getDate();
-        const year = startDate.getFullYear();
-        return `${day}, ${month} ${dateOfMonth} ${year} `;
-      }
-      return 'Date';
-    },
     getColor() {
       return d3.scaleSequentialSqrt([0, this.maxCases], d3.interpolateBlues);
       // return d3.scaleSequential([0, 1000], d3.interpolateBlues);
     },
-    handlePreviousDayClick() {
-      this.sliderState -= 1;
+    handleDataTypeChange() {
+      console.log('handle type change');
+    },
+    handleMapToggle() {
+      this.showStates = !this.showStates;
+      this.showCounties = !this.showCounties;
       this.renderMap(this.showStates);
     },
     handlePlayClick() {
       const that = this;
       let timer = {};
-      // const playButton = document.getElementsByClassName('play-button');
-      // console.log(playButton);
 
+      /**
+       * Need to grab the start date, and the end date and then increment
+       * play date by 1 until we get to the end date
+       */
       if (this.playing === false) {
+        // set playDate to startDate
+        this.playDate = this.startDate;
+        // change value of play button
+        document.getElementsByClassName('play-button')[0].innerHTML = 'Pause';
         timer = setInterval(() => {
-          if (that.sliderState <= 100) {
-            that.sliderState += 1;
-          } else {
-            that.sliderState = 0;
+          // need to have the stop functionality here
+          const done = this.compareDates(this.playDate, this.endDate);
+          if (done) {
+            document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
+            clearInterval(timer);
+            return;
           }
           that.updateInfectionColors();
           that.renderMap(this.showStates);
-          // d3.select('#clock').html(attributeArray[currentAttribute]);  // update the clock
-        }, 2000);
 
-        // d3.select(this).html('stop');  // change the button label to stop
+          // increment playDate
+          this.playDate = new Date(this.playDate.setDate(this.playDate.getDate() + 1));
+        }, 1000);
         this.playing = true;
       } else {
         clearInterval(timer);
-        // d3.select(this).html('play');
+        document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
         this.playing = false;
       }
     },
-    handleMapToggle() {
-      this.showStates = !this.showStates;
-      this.showCounties = !this.showCounties;
-      if (!this.countiesRendered) {
-        this.countiesRendered = true;
-        this.renderMap(false);
-      }
+    handleWindowResize() {
+      const that = this;
+      let resizeTimer;
+      window.onresize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          d3
+            .selectAll('svg')
+            .remove();
+          that.setMapMeasurements();
+          that.renderBothMaps();
+        }, 100);
+      };
     },
-    handleNextDayClick() {
-      this.sliderState += 1;
-      this.renderMap(this.showStates);
-    },
-    handleSliderChange() {
-      this.renderMap(this.showStates);
+    formatDate(date) {
+      const dayToString = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+        'Thursday', 'Friday', 'Saturday'];
+      const monthToString = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December'];
+      const day = dayToString[date.getDay()];
+      const month = monthToString[date.getMonth()];
+      const dateOfMonth = date.getDate();
+      const year = date.getFullYear();
+      return `${day}, ${month} ${dateOfMonth} ${year}`;
     },
     renderMap(states) {
       const that = this;
@@ -264,11 +326,124 @@ export default {
         legend.appendChild(legendWrapper);
       }
     },
+    renderBothMaps() {
+      const that = this;
+      // eslint-disable-next-line operator-linebreak
+      // this.mapMeasurements.width = this.mapMeasurements.width
+      //   - this.mapMeasurements.margin.left - this.mapMeasurements.margin.right;
+      // this.mapMeasurements.height = this.mapMeasurements.width
+      //   * this.mapMeasurements.defaultRatio;
+      let active = d3.select(null);
+
+      const svg = d3.select('.viz').append('svg')
+        .attr('class', 'center-container')
+        // eslint-disable-next-line operator-linebreak
+        .attr('height', this.mapMeasurements.height +
+          this.mapMeasurements.margin.top + this.mapMeasurements.margin.bottom)
+        // eslint-disable-next-line operator-linebreak
+        .attr('width', this.mapMeasurements.width +
+          this.mapMeasurements.margin.left + this.mapMeasurements.margin.right);
+
+      svg.append('rect')
+        .attr('class', 'background center-container')
+        // eslint-disable-next-line operator-linebreak
+        .attr('height', this.mapMeasurements.height +
+          this.mapMeasurements.margin.top + this.mapMeasurements.margin.bottom)
+        // eslint-disable-next-line operator-linebreak
+        .attr('width', this.mapMeasurements.width +
+          this.mapMeasurements.margin.left + this.mapMeasurements.margin.right)
+        // eslint-disable-next-line no-use-before-define
+        .on('click', clicked);
+
+      const projection = d3.geoAlbersUsa()
+        .translate([this.mapMeasurements.width / 2, this.mapMeasurements.height / 2])
+        .scale(this.mapMeasurements.width);
+
+      const path = d3.geoPath()
+        .projection(projection);
+
+      const g = svg.append('g')
+        .attr('class', 'center-container center-items us-state')
+        .attr('transform',
+          `translate(${this.mapMeasurements.margin.left}, ${this.mapMeasurements.margin.top})`)
+        // eslint-disable-next-line operator-linebreak
+        .attr('width', this.mapMeasurements.width +
+          this.mapMeasurements.margin.left + this.mapMeasurements.margin.right)
+        // eslint-disable-next-line operator-linebreak
+        .attr('height', this.mapMeasurements.height +
+          this.mapMeasurements.margin.top + this.mapMeasurements.margin.bottom);
+
+      g.append('g')
+        .attr('id', 'counties')
+        .selectAll('path')
+        .data(topojson.feature(usAlbersCounties, usAlbersCounties.objects.collection).features)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .attr('class', 'county-boundary')
+        // eslint-disable-next-line no-use-before-define
+        .on('click', reset);
+
+      g.append('g')
+        .attr('id', 'states')
+        .selectAll('path')
+        .data(topojson.feature(usAlbers, usAlbers.objects.us).features)
+        .enter()
+        .append('path')
+        .attr('d', path)
+        .attr('class', 'state')
+        // eslint-disable-next-line no-use-before-define
+        .on('click', clicked);
+
+      g.append('path')
+        .datum(topojson.mesh(usAlbers, usAlbers.objects.us, (a, b) => a !== b))
+        .attr('id', 'state-borders')
+        .attr('d', path);
+
+      // eslint-disable-next-line consistent-return
+      function clicked(d) {
+        // eslint-disable-next-line no-use-before-define
+        if (d3.select('.background').node() === this) return reset();
+
+        // eslint-disable-next-line no-use-before-define
+        if (active.node() === this) return reset();
+
+        active.classed('active', false);
+        active = d3.select(this).classed('active', true);
+
+        const bounds = path.bounds(d);
+        const dx = bounds[1][0] - bounds[0][0];
+        const dy = bounds[1][1] - bounds[0][1];
+        const x = (bounds[0][0] + bounds[1][0]) / 2;
+        const y = (bounds[0][1] + bounds[1][1]) / 2;
+        const scale = 0.9 / Math.max(dx / that.mapMeasurements.width,
+          dy / that.mapMeasurements.height);
+        const translate = [that.mapMeasurements.width / 2 - scale * x,
+          that.mapMeasurements.height / 2 - scale * y];
+
+        g.transition()
+          .duration(750)
+          .style('stroke-width', `${1.5 / scale}px`)
+          .attr('transform', `translate(${translate})scale(${scale})`);
+      }
+
+      function reset() {
+        active.classed('active', false);
+        active = d3.select(null);
+
+        g.transition()
+          .delay(100)
+          .duration(750)
+          .style('stroke-width', '1.5px')
+          .attr('transform',
+            `translate(${that.mapMeasurements.margin.left},${that.mapMeasurements.margin.top})`);
+      }
+    },
     legend({
       color,
       title,
       tickSize = 6,
-      width = 320,
+      width = 500,
       height = 44 + tickSize,
       marginTop = 18,
       marginRight = 0,
@@ -403,6 +578,11 @@ export default {
       this.numberOfDays = Math.round(
         (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24),
       );
+
+      // set the end date to the last date
+      this.playDate = new Date(this.nyTimesData.states.pop().date);
+      this.endDate = new Date(this.nyTimesData.states.pop().date);
+      this.lastPulledDate = this.formatDate(new Date(this.nyTimesData.states.pop().date));
     },
     ramp(color, n = 256) {
       const canvas = document.createElement('canvas');
@@ -416,9 +596,35 @@ export default {
       }
       return canvas;
     },
+    setMapMeasurements() {
+      const currentWidth = window.innerWidth - 100;
+      const currentHeight = window.innerHeight - 100;
+
+      const currentRatio = currentWidth / currentHeight;
+      let h;
+      let w;
+
+      // Check if height is limiting factor
+      if (currentRatio > this.mapMeasurements.defaultRatio) {
+        h = currentHeight;
+        w = h * this.mapMeasurements.defaultRatio;
+        // Else width is limiting
+      } else {
+        w = currentWidth;
+        h = w / this.mapMeasurements.defaultRatio;
+      }
+
+      // Set new width and height based on graph dimensions
+      // eslint-disable-next-line operator-linebreak
+      this.mapMeasurements.width = w -
+        this.mapMeasurements.margin.left - this.mapMeasurements.margin.right;
+      // eslint-disable-next-line operator-linebreak
+      this.mapMeasurements.height = h -
+        this.mapMeasurements.margin.top - this.mapMeasurements.margin.bottom;
+    },
     updateInfectionColors() {
       const that = this;
-      const date = this.endDate;
+      const date = this.playDate;
       /**
        * have to figure out if we are showing totals or we are showing up to the current date
        * for these color figures
@@ -456,6 +662,7 @@ export default {
      * https://github.com/CSSEGISandData/COVID-19 - Johns Hopkins CSSE Data
      * https://www.cnn.com/interactive/2020/health/coronavirus-maps-and-cases - Animated bubble map
      * https://github.com/nytimes/covid-19-data - NY Times data
+     * https://projects.fivethirtyeight.com/mortality-rates-united-states/musculoskeletal/#2014 - 538 Graph
      */
     const that = this;
 
@@ -485,20 +692,20 @@ export default {
         that.nyTimesData.counties = that.csvToJSON(countyResponse);
         // need to parse some information out of the data.  need start/end date, and max #
         that.parseData();
-        that.renderMap(true);
+        // that.renderMap(true);
+        that.handleWindowResize();
+        that.setMapMeasurements();
+        that.renderBothMaps();
       }))
       .catch((error) => {
         console.log(error);
       });
   },
-  // watch: {
-  //   endDate() {
-  //     console.log(this.endDate);
-  //     this.renderMap(this.showStates);
-  //   },
-  // },
-  // TODO: make it so the date cannot go past the latest date available
-  // TODO: show date as time moves, and add a pause button.
+  watch: {
+    playDate() {
+      this.formattedPlayDate = this.formatDate(this.playDate);
+    },
+  },
   // TODO: add a reset button
   /**
    * the layer aboe it should be heat bubbles based on the number of cases

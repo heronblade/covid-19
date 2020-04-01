@@ -1,0 +1,7 @@
+3/31 Notes
+Kevin not a huge fan of the legend,
+took a screenshot
+infections vs mortality in the scan
+make it responsive
+make mortality red
+five 38 has a mortality per thousand use their color scheme
