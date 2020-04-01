@@ -41,10 +41,10 @@
     </div>
     <div class="covid__choropleth-wrapper">
       <div class="viz"></div>
-      <svg id="usa" :class="`show-${this.showStates}`"></svg>
-      <svg id="counties" :class="`show-${this.showCounties}`"></svg>
-      <div id="stateLegend" :class="`show-${this.showStates}`"></div>
-      <div id="countyLegend" :class="`show-${this.showCounties}`"></div>
+<!--      <svg id="usa" :class="`show-${this.showStates}`"></svg>-->
+<!--      <svg id="counties" :class="`show-${this.showCounties}`"></svg>-->
+<!--      <div id="stateLegend" :class="`show-${this.showStates}`"></div>-->
+<!--      <div id="countyLegend" :class="`show-${this.showCounties}`"></div>-->
     </div>
     <div class="covid__sources">
       <p>Data coming from <a href="https://github.com/nytimes/covid-19-data">NY Times Github</a></p>
@@ -176,7 +176,6 @@ export default {
     handlePlayClick() {
       const that = this;
       let timer = {};
-
       /**
        * Need to grab the start date, and the end date and then increment
        * play date by 1 until we get to the end date
@@ -195,11 +194,13 @@ export default {
             return;
           }
           that.updateInfectionColors();
-          that.renderMap(this.showStates);
+          that.updateMap();
+          // that.renderBothMaps();
+          // that.renderMap(this.showStates);
 
           // increment playDate
           this.playDate = new Date(this.playDate.setDate(this.playDate.getDate() + 1));
-        }, 1000);
+        }, 100);
         this.playing = true;
       } else {
         clearInterval(timer);
@@ -261,7 +262,6 @@ export default {
       const color = this.getColor();
 
       // reset the infection colors
-      this.infectionColors = {};
       this.updateInfectionColors();
 
       function ready(topoData) {
@@ -289,7 +289,6 @@ export default {
           .append('path')
           .style('opacity', 0.8)
           .style('fill', (d) => color(that.infectionColors[d.properties[`${fips}`]]))
-          .attr('infected', (d) => that.infectionColors[d.properties.name])
           .attr('d', path)
           .attr('fill-rule', 'evenodd')
           .attr('clip-rule', 'evenodd')
@@ -344,6 +343,8 @@ export default {
         .attr('width', this.mapMeasurements.width +
           this.mapMeasurements.margin.left + this.mapMeasurements.margin.right);
 
+      // svg.selectAll('svg').remove();
+
       svg.append('rect')
         .attr('class', 'background center-container')
         // eslint-disable-next-line operator-linebreak
@@ -362,6 +363,12 @@ export default {
       const path = d3.geoPath()
         .projection(projection);
 
+      // colors matched with data
+      const color = this.getColor();
+
+      // reset the infection colors
+      this.updateInfectionColors();
+
       const g = svg.append('g')
         .attr('class', 'center-container center-items us-state')
         .attr('transform',
@@ -373,6 +380,7 @@ export default {
         .attr('height', this.mapMeasurements.height +
           this.mapMeasurements.margin.top + this.mapMeasurements.margin.bottom);
 
+      // counties
       g.append('g')
         .attr('id', 'counties')
         .selectAll('path')
@@ -381,9 +389,11 @@ export default {
         .append('path')
         .attr('d', path)
         .attr('class', 'county-boundary')
+        .style('fill', (d) => color(that.infectionColors[d.properties.fips]))
         // eslint-disable-next-line no-use-before-define
         .on('click', reset);
 
+      // states
       g.append('g')
         .attr('id', 'states')
         .selectAll('path')
@@ -391,6 +401,7 @@ export default {
         .enter()
         .append('path')
         .attr('d', path)
+        .style('fill', (d) => color(that.infectionColors[d.properties.fips_state]))
         .attr('class', 'state')
         // eslint-disable-next-line no-use-before-define
         .on('click', clicked);
@@ -623,31 +634,56 @@ export default {
         this.mapMeasurements.margin.top - this.mapMeasurements.margin.bottom;
     },
     updateInfectionColors() {
+      this.infectionColors = {};
       const that = this;
       const date = this.playDate;
+      this.nyTimesData.states.forEach((state) => {
+        const stateDate = new Date(state.date);
+        if (that.compareDates(date, stateDate)) {
+          that.infectionColors[state.fips] = state.cases;
+        }
+      });
+      this.nyTimesData.counties.forEach((county) => {
+        const countyDate = new Date(county.date);
+        if (that.compareDates(date, countyDate)) {
+          that.infectionColors[county.fips] = county.cases;
+        }
+      });
       /**
        * have to figure out if we are showing totals or we are showing up to the current date
        * for these color figures
        */
-      if (this.showStates) {
-        /**
-         * loop through the states data, and for each state, look at the current date, and
-         * pull that data.
-         */
-        this.nyTimesData.states.forEach((state) => {
-          const stateDate = new Date(state.date);
-          if (that.compareDates(date, stateDate)) {
-            that.infectionColors[state.fips] = state.cases;
-          }
-        });
-      } else {
-        this.nyTimesData.counties.forEach((county) => {
-          const countyDate = new Date(county.date);
-          if (that.compareDates(date, countyDate)) {
-            that.infectionColors[county.fips] = county.cases;
-          }
-        });
-      }
+      // if (this.showStates) {
+      //   /**
+      //    * loop through the states data, and for each state, look at the current date, and
+      //    * pull that data.
+      //    */
+      //   this.nyTimesData.states.forEach((state) => {
+      //     const stateDate = new Date(state.date);
+      //     if (that.compareDates(date, stateDate)) {
+      //       that.infectionColors[state.fips] = state.cases;
+      //     }
+      //   });
+      // } else {
+      //   this.nyTimesData.counties.forEach((county) => {
+      //     const countyDate = new Date(county.date);
+      //     if (that.compareDates(date, countyDate)) {
+      //       that.infectionColors[county.fips] = county.cases;
+      //     }
+      //   });
+      // }
+    },
+    updateMap() {
+      const that = this;
+      const color = this.getColor();
+      d3
+        .select('#counties')
+        .selectAll('path')
+        .style('fill', (d) => color(that.infectionColors[d.properties.fips]));
+      d3
+        .select('#states')
+        .selectAll('path')
+        .style('fill', (d) => color(that.infectionColors[d.properties.fips_state]));
     },
   },
   mounted() {
