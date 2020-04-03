@@ -55,6 +55,8 @@ import * as topojson from 'topojson-client';
 import axios from 'axios';
 import usAlbersCounties from '../../public/us-albers-counties.json';
 import usAlbers from '../../public/us-albers.json';
+// eslint-disable-next-line no-unused-vars
+import census from '../../public/bls-population-estimate.json';
 
 export default {
   name: 'choropleth',
@@ -81,6 +83,7 @@ export default {
       },
       maxDeaths: 0,
       maxCases: 0,
+      maxPopulation: 9818605, // coming from json
       numberOfDays: 70,
       nyTimesData: {
         states: '',
@@ -324,7 +327,7 @@ export default {
       // bubbles radius
       const domainMax = this.dataType === 'infections' ? this.maxCases : this.maxDeaths;
       const radius = d3.scaleSqrt()
-        .domain([0, `${domainMax / 2}`])
+        .domain([0, `${domainMax}`])
         .range([0, 15]);
 
       // bubbles
@@ -343,6 +346,27 @@ export default {
           return `translate(${path.centroid(d)})`;
         })
         .attr('r', (d) => radius(that.bubbleSizes[d.properties.fips]));
+
+      // population
+      const censusRadius = d3.scaleSqrt()
+        .domain([0, `${that.maxPopulation}`])
+        .range([0, 15]);
+
+      g.append('g')
+        .attr('id', 'census')
+        .selectAll('circle')
+        .data(topojson.feature(usAlbersCounties, usAlbersCounties.objects.collection).features)
+        .enter()
+        .append('circle')
+        .attr('transform', (d) => {
+          const center = path.centroid(d);
+          // eslint-disable-next-line no-restricted-globals
+          if (isNaN(center[0]) || isNaN(center[0])) {
+            return null;
+          }
+          return `translate(${path.centroid(d)})`;
+        })
+        .attr('r', (d) => censusRadius(d.properties.census));
 
       // eslint-disable-next-line consistent-return
       function clicked(d) {
@@ -402,11 +426,32 @@ export default {
       this.endDate = new Date(this.nyTimesData.states.pop().date);
       this.lastPulledDate = this.formatDate(new Date(this.nyTimesData.states.pop().date));
 
-      // add data to the us albers data
       this.nyTimesData.counties.forEach((county) => {
         const countyDate = new Date(county.date);
         if (that.compareDates(that.endDate, countyDate)) {
           that.bubbleSizes[county.fips] = county.cases;
+        }
+      });
+
+      // add population data to the us albers data
+      // states from alabama to connecticut have an issue with the fips
+      // there should be a leading zero
+      usAlbersCounties.objects.collection.geometries.forEach((county) => {
+        if (county.properties.fips.length === 5) {
+          const c = census[parseInt(county.properties.fips, 10)];
+          if (c === undefined) { // one county in AK is undefined
+            // eslint-disable-next-line no-param-reassign
+            county.properties.census = 0;
+          } else {
+            // eslint-disable-next-line no-param-reassign
+            county.properties.census = c.amount;
+          }
+        } else if (census[county.properties.fips]) {
+          // eslint-disable-next-line no-param-reassign
+          county.properties.census = census[county.properties.fips].amount;
+        } else {
+          // eslint-disable-next-line no-param-reassign
+          county.properties.census = 0;
         }
       });
     },

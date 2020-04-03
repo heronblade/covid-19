@@ -45,6 +45,13 @@
             stroke: #fff;
             stroke-width: .5px;
         }
+
+        #census {
+            fill-opacity: 0.1;
+            stroke: greenyellow;
+            stroke-width: 0.2px;
+            fill: #1AEDCD
+        }
     }
 
     &__controls {
