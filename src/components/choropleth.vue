@@ -1,7 +1,7 @@
 <template>
   <div class="covid">
     <div class="covid__controls">
-      <div class="radio-button">
+      <div class="toggle">
         <p>Choose between Infections and Deaths</p>
         <div class="onoffswitch">
           <input type="checkbox" name="onoffswitch"
@@ -12,12 +12,9 @@
             <span class="onoffswitch-switch"></span>
           </label>
         </div>
-<!--        <input @click="handleDataTypeChange" type="radio"-->
-<!--               id="cases" name="dataType" value="Cases">-->
-<!--        <label for="cases">Cases</label>-->
-<!--        <input @click="handleDataTypeChange" type="radio"-->
-<!--               id="deaths" name="dataType" value="Deaths">-->
-<!--        <label for="deaths">Deaths</label>-->
+        <p>Toggle Circles</p>
+        <input type="checkbox" id="circlesCheckbox" checked @click="handleBubbleToggle">
+        <label for="circlesCheckbox">Circles</label>
       </div>
       <div class="current-date">{{this.formattedPlayDate}}</div>
       <div class="date-slider">
@@ -63,6 +60,7 @@ export default {
   name: 'choropleth',
   data() {
     return {
+      bubbleSizes: {},
       clicked: false,
       dataType: 'infections',
       datePicker: '',
@@ -168,18 +166,18 @@ export default {
         return d3.scaleSequentialSqrt([0, this.maxDeaths], d3.interpolateReds);
       }
       return d3.scaleSequentialSqrt([0, this.maxCases], d3.interpolateBlues);
-      // return d3.scaleSequential([0, 1000], d3.interpolateBlues);
+    },
+    handleBubbleToggle() {
+      document.getElementById('circles').classList.toggle('show-false');
     },
     handleDataTypeChange(e) {
-      console.log('handle type change');
-      console.log(e);
       const { checked } = e.toElement;
       if (checked) {
         this.dataType = 'infections';
       } else {
         this.dataType = 'deaths';
       }
-      this.updateInfectionColors();
+      this.updateColorsAndBubbles();
       this.updateMap();
     },
     handlePlayClick() {
@@ -189,10 +187,10 @@ export default {
        * play date by 1 until we get to the end date
        */
       if (this.playing === false) {
-        // set playDate to startDate
-        // only want to do this if we haven't paused
-        // eslint-disable-next-line no-unused-expressions
-        this.paused ? null : this.playDate = this.startDate;
+        // set playDate to startDate only want to do this if we haven't paused
+        if (!this.paused) {
+          this.playDate = this.startDate;
+        }
         // change value of play button
         document.getElementsByClassName('play-button')[0].innerHTML = 'Pause';
         window.mapTimer = setInterval(() => {
@@ -202,9 +200,10 @@ export default {
             document.getElementsByClassName('play-button')[0].innerHTML = 'Play';
             clearInterval(window.mapTimer);
             this.paused = false;
+            this.playing = false;
             return;
           }
-          that.updateInfectionColors();
+          that.updateColorsAndBubbles();
           that.updateMap();
           // increment playDate
           this.playDate = new Date(this.playDate.setDate(this.playDate.getDate() + 1));
@@ -277,7 +276,7 @@ export default {
       const color = this.getColor(this.dataType);
 
       // reset the infection colors
-      this.updateInfectionColors();
+      this.updateColorsAndBubbles();
 
       const g = svg.append('g')
         .attr('class', 'center-container center-items us-state')
@@ -316,10 +315,34 @@ export default {
         // eslint-disable-next-line no-use-before-define
         .on('click', clicked);
 
+      // state borders
       g.append('path')
         .datum(topojson.mesh(usAlbers, usAlbers.objects.us, (a, b) => a !== b))
         .attr('id', 'state-borders')
         .attr('d', path);
+
+      // bubbles radius
+      const domainMax = this.dataType === 'infections' ? this.maxCases : this.maxDeaths;
+      const radius = d3.scaleSqrt()
+        .domain([0, `${domainMax / 2}`])
+        .range([0, 15]);
+
+      // bubbles
+      g.append('g')
+        .attr('id', 'circles')
+        .selectAll('circle')
+        .data(topojson.feature(usAlbersCounties, usAlbersCounties.objects.collection).features)
+        .enter()
+        .append('circle')
+        .attr('transform', (d) => {
+          const center = path.centroid(d);
+          // eslint-disable-next-line no-restricted-globals
+          if (isNaN(center[0]) || isNaN(center[0])) {
+            return null;
+          }
+          return `translate(${path.centroid(d)})`;
+        })
+        .attr('r', (d) => radius(that.bubbleSizes[d.properties.fips]));
 
       // eslint-disable-next-line consistent-return
       function clicked(d) {
@@ -361,6 +384,7 @@ export default {
       }
     },
     parseData() {
+      const that = this;
       this.maxCases = Math.max(
         ...this.nyTimesData.states.map((state) => parseInt(state.cases, 10)),
       );
@@ -377,6 +401,14 @@ export default {
       this.playDate = new Date(this.nyTimesData.states.pop().date);
       this.endDate = new Date(this.nyTimesData.states.pop().date);
       this.lastPulledDate = this.formatDate(new Date(this.nyTimesData.states.pop().date));
+
+      // add data to the us albers data
+      this.nyTimesData.counties.forEach((county) => {
+        const countyDate = new Date(county.date);
+        if (that.compareDates(that.endDate, countyDate)) {
+          that.bubbleSizes[county.fips] = county.cases;
+        }
+      });
     },
     setMapMeasurements() {
       const currentWidth = window.innerWidth - 100;
@@ -404,11 +436,11 @@ export default {
       this.mapMeasurements.height = h -
         this.mapMeasurements.margin.top - this.mapMeasurements.margin.bottom;
     },
-    updateInfectionColors() {
+    updateColorsAndBubbles() {
       this.infectionColors = {};
+      this.bubbleSizes = {};
       const that = this;
       const date = this.playDate;
-      console.log(this.dataType);
       if (this.dataType === 'infections') {
         this.nyTimesData.states.forEach((state) => {
           const stateDate = new Date(state.date);
@@ -420,6 +452,7 @@ export default {
           const countyDate = new Date(county.date);
           if (that.compareDates(date, countyDate)) {
             that.infectionColors[county.fips] = county.cases;
+            that.bubbleSizes[county.fips] = county.cases;
           }
         });
       } else {
@@ -433,33 +466,10 @@ export default {
           const countyDate = new Date(county.date);
           if (that.compareDates(date, countyDate)) {
             that.infectionColors[county.fips] = county.deaths;
+            that.bubbleSizes[county.fips] = county.deaths;
           }
         });
       }
-
-      /**
-       * have to figure out if we are showing totals or we are showing up to the current date
-       * for these color figures
-       */
-      // if (this.showStates) {
-      //   /**
-      //    * loop through the states data, and for each state, look at the current date, and
-      //    * pull that data.
-      //    */
-      //   this.nyTimesData.states.forEach((state) => {
-      //     const stateDate = new Date(state.date);
-      //     if (that.compareDates(date, stateDate)) {
-      //       that.infectionColors[state.fips] = state.cases;
-      //     }
-      //   });
-      // } else {
-      //   this.nyTimesData.counties.forEach((county) => {
-      //     const countyDate = new Date(county.date);
-      //     if (that.compareDates(date, countyDate)) {
-      //       that.infectionColors[county.fips] = county.cases;
-      //     }
-      //   });
-      // }
     },
     updateMap() {
       const that = this;
@@ -472,6 +482,16 @@ export default {
         .select('#states')
         .selectAll('path')
         .style('fill', (d) => color(that.infectionColors[d.properties.fips_state]));
+
+      // set this up to change based on the maxCases/Deaths
+      const domainMax = this.dataType === 'infections' ? this.maxCases : this.maxDeaths;
+      const radius = d3.scaleSqrt()
+        .domain([0, `${domainMax / 2}`])
+        .range([0, 15]);
+      d3
+        .select('#circles')
+        .selectAll('circle')
+        .attr('r', (d) => radius(that.bubbleSizes[d.properties.fips]));
     },
   },
   mounted() {
@@ -531,16 +551,5 @@ export default {
     },
   },
   // TODO: add a reset button
-  /**
-   * the layer aboe it should be heat bubbles based on the number of cases
-   * lifehacker has a site up that i can look at
-   * make it two things up here so you have the map and you have the bar graph like
-   * http://91-divoc.com/pages/covid-visualization/
-   *
-   * vintage - population analytics (loss triangles)
-   *
-   * the bubbles will be overlayed in there because they talk about the spread. need to be able
-   * to turn the cirlces off on/off switch
-   */
 };
 </script>

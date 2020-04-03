@@ -39,6 +39,12 @@
             stroke: $color-white;
             stroke-width: .5px;
         }
+
+        #circles {
+            fill-opacity: .5;
+            stroke: #fff;
+            stroke-width: .5px;
+        }
     }
 
     &__controls {
