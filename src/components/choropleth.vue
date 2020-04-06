@@ -327,7 +327,7 @@ export default {
       // bubbles radius
       const domainMax = this.dataType === 'infections' ? this.maxCases : this.maxDeaths;
       const radius = d3.scaleSqrt()
-        .domain([0, `${domainMax}`])
+        .domain([0, `${domainMax / 2}`])
         .range([0, 15]);
 
       // bubbles
@@ -349,6 +349,7 @@ export default {
 
       // population
       const censusRadius = d3.scaleSqrt()
+        // .domain([0, `${domainMax / 2}`])
         .domain([0, `${that.maxPopulation}`])
         .range([0, 15]);
 
@@ -366,7 +367,32 @@ export default {
           }
           return `translate(${path.centroid(d)})`;
         })
-        .attr('r', (d) => censusRadius(d.properties.census));
+        .attr('r', (d) => {
+          let infections = that.bubbleSizes[d.properties.fips];
+          const population = parseInt(d.properties.census, 10);
+          if (infections === undefined) {
+            infections = that.bubbleSizes[parseInt(d.properties.fips, 10)];
+          }
+          if (infections === undefined) {
+            infections = 0;
+          }
+          const ratio = parseInt(infections, 10) / (population / 100000);
+          // console.log(d);
+          // console.log(ratio);
+          // console.log(population / 100000);
+          return censusRadius(ratio);
+          // eslint-disable-next-line no-restricted-globals
+          // if (isNaN(ratio)) {
+          //   console.log(ratio);
+          //   console.log(population);
+          //   console.log(infections);
+          // }
+          // console.log(ratio);
+          // console.log(infections);
+          // console.log(d);
+          // (infections/death) /(population/100,000)
+          // return censusRadius(d.properties.census);
+        });
 
       // eslint-disable-next-line consistent-return
       function clicked(d) {
@@ -426,12 +452,20 @@ export default {
       this.endDate = new Date(this.nyTimesData.states.pop().date);
       this.lastPulledDate = this.formatDate(new Date(this.nyTimesData.states.pop().date));
 
+      const cases = {};
+      const deaths = {};
       this.nyTimesData.counties.forEach((county) => {
         const countyDate = new Date(county.date);
         if (that.compareDates(that.endDate, countyDate)) {
           that.bubbleSizes[county.fips] = county.cases;
+          if (county.state === 'New York') {
+            cases[county.fips] = county.cases;
+            deaths[county.fips] = county.deaths;
+          }
         }
       });
+      window.cases = cases;
+      window.deaths = deaths;
 
       // add population data to the us albers data
       // states from alabama to connecticut have an issue with the fips
@@ -441,7 +475,7 @@ export default {
           const c = census[parseInt(county.properties.fips, 10)];
           if (c === undefined) { // one county in AK is undefined
             // eslint-disable-next-line no-param-reassign
-            county.properties.census = 0;
+            county.properties.census = 1;
           } else {
             // eslint-disable-next-line no-param-reassign
             county.properties.census = c.amount;
@@ -451,7 +485,7 @@ export default {
           county.properties.census = census[county.properties.fips].amount;
         } else {
           // eslint-disable-next-line no-param-reassign
-          county.properties.census = 0;
+          county.properties.census = 1;
         }
       });
     },

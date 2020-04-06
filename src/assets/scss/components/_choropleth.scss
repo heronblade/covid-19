@@ -41,16 +41,17 @@
         }
 
         #circles {
-            fill-opacity: .5;
-            stroke: #fff;
+            fill-opacity: .9;
+            stroke: red;
+            fill: red;
             stroke-width: .5px;
         }
 
         #census {
-            fill-opacity: 0.1;
-            stroke: greenyellow;
-            stroke-width: 0.2px;
-            fill: #1AEDCD
+            fill-opacity: .2;
+            fill: green;
+            stroke: green;
+            stroke-width: .5px;
         }
     }
 
