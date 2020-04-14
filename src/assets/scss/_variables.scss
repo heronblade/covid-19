@@ -1,0 +1,104 @@
+/* ==========================================================================
+ * Core Application SCSS Variables
+ * ========================================================================== */
+
+/* COLOR ==================================================================== */
+
+// Primary
+$color-aluminum: #95989A;
+$color-bombay: #AFAFAF;
+$color-gunmetal: #2D3338;
+$color-blue-dark: #324f79;
+$color-blue-pale: #15c6fc;
+$color-gold: #ffce00;
+$color-matisse: #385988;
+$color-white: #ffffff;
+$color-black: #000000;
+$color-blue: #014c5f;
+$color-green: #1AEDCD;
+$color-grey: #dddddd;
+
+// Choropleth
+$color-choro-default: #c1c1c1;
+$color-choro-fill: #aaaaaa;
+
+// Switch
+$color-switch-border: #999999;
+$color-switch-background-before: #aacfe5;
+$color-switch-background-after: #ce2f2f;
+
+/* SIZE ===================================================================== */
+
+$root-width-max: 1170px;
+$main-width-max: 1000px;
+
+/* FONT ===================================================================== */
+
+$font-family-poppins: 'Poppins';
+$font-family-open-sans: 'Open Sans';
+$font-family-adagio: 'Adagio Sans';
+
+/* Z-INDEX ================================================================== */
+
+$zindex-dropdown:                   1000 !default;
+$zindex-sticky:                     1020 !default;
+$zindex-fixed:                      1030 !default;
+$zindex-modal-backdrop:             1040 !default;
+$zindex-modal:                      1050 !default;
+$zindex-popover:                    1060 !default;
+$zindex-tooltip:                    1070 !default;
+
+/* EFFECTS ================================================================== */
+
+$fx-box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+$fx-box-shadow-bold: 0 2px 2px 1px rgba(0, 0, 0, 0.35);
+
+/* ANIMATION ================================================================ */
+
+$speed-lightning:               100ms;
+$speed-fast:                    200ms;
+$speed-med:                     300ms;
+$speed-slow:                    800ms;
+$speed-turtle:                  1000ms;
+$speed-molasses:                3000ms;
+$speed-omg:                     10000ms;
+
+$transition-ease:               cubic-bezier(0.19, 1, 0.22, 1);
+$transition-easeInOutQuint:     cubic-bezier(0.860, 0, 0.070, 1.000);
+$transition-easeOutQuint:       cubic-bezier(0.230, 1.000, 0.320, 1.000);
+
+
+%HorizontalRule {
+    position: relative;
+    display: block;
+    margin: 2em 0;
+    height: 0;
+    width: 100%;
+    content: "";
+    border-top: 2px solid #000;
+    border-bottom: 1px solid #fff;
+    opacity: 0.15;
+    flex: 1 1 100%;
+}
+
+/* BREAKPOINTS ================================================================== */
+//$--sm: 768px !default;
+//$--md: 992px !default;
+//$--lg: 1200px !default;
+//$--xl: 1920px !default;
+
+@mixin breakpoint($point) {
+    @if $point == desktop {
+        @media (max-width: 1920px) { @content ; }
+    } @else if $point == laptop {
+        @media (max-width: 1200px) { @content ; }
+    } @else if $point == ipadPro {
+        @media (max-width: 1024px) { @content ;}
+    } @else if $point == phablet {
+        @media (max-width: 992px) { @content ; }
+    } @else if $point == mobile {
+        @media (max-width: 768px) { @content ; }
+    }
+}
+// max-width means it'll work until the max.
+// min-width means it'll work at this as a minimum

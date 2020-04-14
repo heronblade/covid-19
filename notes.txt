@@ -1,0 +1,21 @@
+3/31 Notes
+Kevin not a huge fan of the legend,
+took a screenshot
+infections vs mortality in the scan
+five 38 has a mortality per thousand use their color scheme
+
+the layer aboe it should be heat bubbles based on the number of cases
+lifehacker has a site up that i can look at
+make it two things up here so you have the map and you have the bar graph like
+http://91-divoc.com/pages/covid-visualization/
+vintage - population analytics (loss triangles)
+the bubbles will need to be overlayed in there because they talk about the spread. need to be able
+to turn the circles off on/off switch
+
+
+4/2
+Might be a good idea to add in census data then too
+If we can show % infected and % dead
+NYC is a very dense city, we should show
+
+Certain toggles will adjust the bubbles and others will adjust the colors

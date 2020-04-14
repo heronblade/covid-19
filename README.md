@@ -10,15 +10,8 @@ npm install
 npm run serve
 ```
 
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+TODO
+1. Going to want to be able to show spread over time
+1. Toggle for ?
+1. Be able to filter by cases
+1. Maybe a press play so you can see spread over time
